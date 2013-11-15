@@ -6,29 +6,48 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import com.amazonaws.AmazonClientException;
-import com.amazonaws.services.ec2.AmazonEC2Client;
-import com.amazonaws.services.ec2.model.DescribeInstancesResult;
+import com.amazonaws.AmazonServiceException;
+import com.martons.aws.service.AWSEC2Service;
 
 @Component
 public class SimpleAWSEngine {
 
-	private final Logger logger = LoggerFactory.getLogger(SimpleAWSEngine.class);
-
 	@Autowired
-	private AmazonEC2Client amazonEC2Client;
+	private AWSEC2Service awsEc2Service;
 
-	// @Autowired
-	// private AWSCredentialsProvider awsCredentialsProvider;
+	private final Logger logger = LoggerFactory.getLogger(SimpleAWSEngine.class);
 
 	public void run(String[] args) {
 		try {
-			DescribeInstancesResult describeInstancesResult = amazonEC2Client.describeInstances();
-			System.out.println(describeInstancesResult.getReservations().size());
-
-			// System.out.println(awsCredentialsProvider.getCredentials().getAWSAccessKeyId());
-			// System.out.println(awsCredentialsProvider.getCredentials().getAWSSecretKey());
+			if (args.length < 1) {
+				throw new AmazonClientException("Provide action as an argument: describe-instances, run-instances, stop-instances, terminate-instances");
+			} else {
+				if ("describe-instances".equals(args[0])) {
+					describeInstances();
+				} else if ("run-instances".equals(args[0])) {
+					runInstances(args);
+				} else if ("stop-instances".equals(args[0])) {
+					awsEc2Service.stopInstances();
+				} else if ("terminate-instances".equals(args[0])) {
+					awsEc2Service.terminateInstances();
+				}
+			}
+		} catch (AmazonServiceException e) {
+			logger.error("An Amazon service returned an error response.", e);
 		} catch (AmazonClientException e) {
 			logger.error("An execption occured in the client.", e);
 		}
+	}
+
+	private void runInstances(String[] args) {
+		if (args.length < 6) {
+			throw new AmazonClientException("Provide the following as arguments: ami-id, instance-count, instance-type, key-name, security-group");
+		} else {
+			awsEc2Service.runInstances(args[1], Integer.parseInt(args[2]), args[3], args[4], args[5]);
+		}
+	}
+
+	private void describeInstances() {
+		awsEc2Service.describeInstances();
 	}
 }
